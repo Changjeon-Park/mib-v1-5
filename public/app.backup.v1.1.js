@@ -27,46 +27,18 @@ function renderHeroTags(themeResults) {
 }
 
 function renderTopNews(news) {
-  const mustRead = news.slice(0, 3);
-  const moreNews = news.slice(3);
-
   topNews.innerHTML = `
     <div class="section-label">시장 요약</div>
     <h2 class="summary-title">🔥 오늘 핵심 뉴스</h2>
     ${
       news.length === 0
         ? `<div class="empty">표시할 핵심 뉴스가 없습니다.</div>`
-        : `
-          <div style="margin-bottom: 14px;">
-            <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">🔥 MUST READ</div>
-            ${mustRead.map((item, index) => `
-              <div class="summary-news-item">
-                <a class="summary-news-link" href="${item.link}" target="_blank" rel="noopener noreferrer">
-                  ${index + 1}. ${item.title}
-                </a>
-                <div class="summary-news-meta">${item.source}${formatDate(item.pubDate) ? " · " + formatDate(item.pubDate) : ""}</div>
-              </div>
-            `).join("")}
+        : news.map(item => `
+          <div class="summary-news-item">
+            <a class="summary-news-link" href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>
+            <div class="summary-news-meta">${item.source}${formatDate(item.pubDate) ? " · " + formatDate(item.pubDate) : ""}</div>
           </div>
-
-          ${
-            moreNews.length > 0
-              ? `
-                <div>
-                  <div style="font-size:13px; color:#94a3b8; margin-bottom:8px;">추가 체크 뉴스</div>
-                  ${moreNews.map((item, index) => `
-                    <div class="summary-news-item">
-                      <a class="summary-news-link" href="${item.link}" target="_blank" rel="noopener noreferrer">
-                        ${index + 4}. ${item.title}
-                      </a>
-                      <div class="summary-news-meta">${item.source}${formatDate(item.pubDate) ? " · " + formatDate(item.pubDate) : ""}</div>
-                    </div>
-                  `).join("")}
-                </div>
-              `
-              : ""
-          }
-        `
+        `).join("")
     }
   `;
 }

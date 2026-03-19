@@ -159,51 +159,6 @@ function hasAny(text, keywords) {
   return keywords.some(keyword => text.includes(keyword));
 }
 
-function isRelevantNews(title, theme = null) {
-  const text = (title || "").toLowerCase();
-
-  const blockedForeignStocks = [
-    "치어 홀딩", "cheer holding", "나스닥 상장 유지", "주식 병합 승인"
-  ];
-
-  const blockedNoise = [
-    "특징주", "오전장", "장중", "마감", "today's pick", "오늘의 pick",
-    "급등", "급락", "추천 후 상승", "상승세", "주가 상승세"
-  ];
-
-  const allowedGlobalMacro = [
-    "엔비디아", "nvidia", "tsmc", "인텔", "arm", "테슬라", "fomc", "fed"
-  ];
-
-  const domesticHint = [
-    "삼성", "sk", "현대", "lg", "두산", "한화", "셀트리온", "유한양행",
-    "알테오젠", "리가켐", "한국전력", "한전기술", "두산에너빌리티",
-    "ls electric", "효성중공업", "현대로템", "lig넥스원", "풍산",
-    "코스피", "코스닥", "국내", "한국"
-  ];
-
-  // 1) 명확한 제거 대상
-  if (blockedForeignStocks.some(k => text.includes(k.toLowerCase()))) return false;
-
-  // 2) 너무 소음성 기사 제거
-  if (blockedNoise.some(k => text.includes(k.toLowerCase()))) return false;
-
-  // 3) 글로벌 거시/핵심 기업은 허용
-  if (allowedGlobalMacro.some(k => text.includes(k.toLowerCase()))) return true;
-
-  // 4) 국내 투자 연결 기사 허용
-  if (domesticHint.some(k => text.includes(k.toLowerCase()))) return true;
-
-  // 5) 테마 핵심/후보 종목 언급 시 허용
-  if (theme) {
-    const stockKeywords = [...theme.coreStocks, ...theme.candidateStocks].map(v => v.toLowerCase());
-    if (stockKeywords.some(k => text.includes(k))) return true;
-  }
-
-  // 6) 기본은 제외
-  return false;
-}
-
 function qualityPriority(title) {
   let score = 0;
   const text = (title || "").toLowerCase();
@@ -326,15 +281,12 @@ async function parseGoogleNews(query, theme = null) {
   });
 
   const recentOnly = items.filter(item => isRecentNews(item.pubDate, 7));
-const base = recentOnly.length ? recentOnly : items;
+  const base = recentOnly.length ? recentOnly : items;
 
-const filtered = base.filter(item => isRelevantNews(item.title, theme));
-const finalBase = filtered.length ? filtered : base;
-
-const deduped = dedupeNews(finalBase).map(item => ({
-  ...item,
-  score: buildNewsScore(item, theme)
-}));
+  const deduped = dedupeNews(base).map(item => ({
+    ...item,
+    score: buildNewsScore(item, theme)
+  }));
 
   return sortNews(deduped);
 }
@@ -499,37 +451,6 @@ function buildTopPickCandidates(themeResults) {
     .slice(0, 3);
 }
 
-function isRelevantNews(title) {
-  const text = (title || "").toLowerCase();
-
-  // 한국 주요 기업 키워드
-  const koreanStocks = [
-    "삼성", "sk", "현대", "두산", "한화", "lg", "셀트리온",
-    "카카오", "네이버", "포스코", "한국", "코스피", "코스닥"
-  ];
-
-  // 글로벌 핵심 영향 기업
-  const globalImpact = [
-    "nvidia", "엔비디아", "tsmc", "인텔", "arm"
-  ];
-
-  // 제거 대상 키워드
-  const exclude = [
-    "치어", "중국", "홍콩", "상하이", "심천"
-  ];
-
-  // 제거 먼저
-  if (exclude.some(k => text.includes(k))) return false;
-
-  // 국내 or 영향 기업 포함이면 통과
-  if (
-    koreanStocks.some(k => text.includes(k)) ||
-    globalImpact.some(k => text.includes(k))
-  ) return true;
-
-  return false;
-}
-
 async function buildBriefing() {
   const results = [];
 
@@ -614,4 +535,3 @@ app.get("/api/briefing", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`서버 실행: http://localhost:${PORT}`);
 });
-

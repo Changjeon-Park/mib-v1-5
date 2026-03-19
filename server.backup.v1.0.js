@@ -101,17 +101,9 @@ function isRecentNews(pubDate, days = 7) {
 
 function cleanTitle(title) {
   if (!title) return "제목 없음";
-
-  return title
-    .replace(/\s+/g, " ")
-    .replace(/\[[^\]]+\]/g, " ")
-    .replace(/\([^)]*사진[^)]*\)/gi, " ")
-    .replace(/\([^)]*영상[^)]*\)/gi, " ")
-    .replace(/\([^)]*종합[^)]*\)/gi, " ")
-    .trim()
-    .split(" - ")
-    .slice(0, -1)
-    .join(" - ") || title.trim();
+  const parts = title.split(" - ");
+  if (parts.length > 1) parts.pop();
+  return parts.join(" - ").trim();
 }
 
 function extractSource(item) {
@@ -128,16 +120,40 @@ function extractSource(item) {
 }
 
 function normalizeText(text) {
-  return (text || "")
-    .replace(/\[[^\]]+\]/g, " ")
-    .replace(/[^\w가-힣]/g, "")
-    .toLowerCase()
-    .trim();
+  return (text || "").replace(/[^\w가-힣]/g, "").toLowerCase().trim();
 }
 
 function sourcePriority(source) {
   const idx = preferredSources.findIndex(name => source.includes(name));
   return idx === -1 ? 0 : preferredSources.length - idx;
+}
+
+function headlinePriority(title) {
+  let score = 0;
+
+  if (
+    title.includes("수주") ||
+    title.includes("계약") ||
+    title.includes("투자") ||
+    title.includes("확대") ||
+    title.includes("승인")
+  ) score += 3;
+
+  if (
+    title.includes("정책") ||
+    title.includes("실적") ||
+    title.includes("기술") ||
+    title.includes("공급")
+  ) score += 2;
+
+  if (
+    title.includes("지연") ||
+    title.includes("감소") ||
+    title.includes("하락") ||
+    title.includes("리스크")
+  ) score -= 2;
+
+  return score;
 }
 
 function recencyPriority(pubDate) {
@@ -147,137 +163,12 @@ function recencyPriority(pubDate) {
 
   const hours = (Date.now() - date.getTime()) / (1000 * 60 * 60);
 
-  if (hours <= 6) return 3;
-  if (hours <= 12) return 2;
-  if (hours <= 24) return 2;
-  if (hours <= 48) return 1;
+  if (hours <= 6) return 8;
+  if (hours <= 12) return 6;
+  if (hours <= 24) return 5;
+  if (hours <= 48) return 3;
   if (hours <= 72) return 1;
   return 0;
-}
-
-function hasAny(text, keywords) {
-  return keywords.some(keyword => text.includes(keyword));
-}
-
-function isRelevantNews(title, theme = null) {
-  const text = (title || "").toLowerCase();
-
-  const blockedForeignStocks = [
-    "치어 홀딩", "cheer holding", "나스닥 상장 유지", "주식 병합 승인"
-  ];
-
-  const blockedNoise = [
-    "특징주", "오전장", "장중", "마감", "today's pick", "오늘의 pick",
-    "급등", "급락", "추천 후 상승", "상승세", "주가 상승세"
-  ];
-
-  const allowedGlobalMacro = [
-    "엔비디아", "nvidia", "tsmc", "인텔", "arm", "테슬라", "fomc", "fed"
-  ];
-
-  const domesticHint = [
-    "삼성", "sk", "현대", "lg", "두산", "한화", "셀트리온", "유한양행",
-    "알테오젠", "리가켐", "한국전력", "한전기술", "두산에너빌리티",
-    "ls electric", "효성중공업", "현대로템", "lig넥스원", "풍산",
-    "코스피", "코스닥", "국내", "한국"
-  ];
-
-  // 1) 명확한 제거 대상
-  if (blockedForeignStocks.some(k => text.includes(k.toLowerCase()))) return false;
-
-  // 2) 너무 소음성 기사 제거
-  if (blockedNoise.some(k => text.includes(k.toLowerCase()))) return false;
-
-  // 3) 글로벌 거시/핵심 기업은 허용
-  if (allowedGlobalMacro.some(k => text.includes(k.toLowerCase()))) return true;
-
-  // 4) 국내 투자 연결 기사 허용
-  if (domesticHint.some(k => text.includes(k.toLowerCase()))) return true;
-
-  // 5) 테마 핵심/후보 종목 언급 시 허용
-  if (theme) {
-    const stockKeywords = [...theme.coreStocks, ...theme.candidateStocks].map(v => v.toLowerCase());
-    if (stockKeywords.some(k => text.includes(k))) return true;
-  }
-
-  // 6) 기본은 제외
-  return false;
-}
-
-function qualityPriority(title) {
-  let score = 0;
-  const text = (title || "").toLowerCase();
-
-  const strongPositive = [
-    "수주", "계약", "승인", "허가", "실적", "흑자", "투자", "증설", "확대",
-    "수출", "기술수출", "공급", "양산", "상용화", "도입", "선정", "체결",
-    "fda", "임상", "3상", "2상", "1상", "smr", "mou"
-  ];
-
-  const mildPositive = [
-    "기술", "개발", "협력", "추진", "출시", "발표", "본격", "개시", "착수"
-  ];
-
-  const negativeNoise = [
-    "특징주", "오전장", "장중", "마감", "오늘의 pick", "today's pick", "급등",
-    "급락", "들썩", "폭등", "폭락", "테마주", "주목", "이 회사", "왜 올랐나",
-    "왜 떨어지나", "관련주", "수혜주", "관심주"
-  ];
-
-  const mildNoise = [
-    "속보", "종합", "단독", "브리핑", "이슈", "체크", "전망", "분석", "가능할까"
-  ];
-
-  if (hasAny(text, strongPositive)) score += 8;
-  if (hasAny(text, mildPositive)) score += 3;
-  if (hasAny(text, negativeNoise)) score -= 8;
-  if (hasAny(text, mildNoise)) score -= 3;
-
-  if (title.length < 14) score -= 2;
-  if (title.length > 90) score -= 1;
-
-  return score;
-}
-
-function themeRelevanceScore(title, theme) {
-  const text = (title || "").toLowerCase();
-  let score = 0;
-
-  const stockKeywords = [...theme.coreStocks, ...theme.candidateStocks].map(v => v.toLowerCase());
-  stockKeywords.forEach(keyword => {
-    if (text.includes(keyword)) score += 4;
-  });
-
-  const themeKeywordMap = {
-    "반도체": ["반도체", "hbm", "파운드리", "cxl", "후공정", "패키징", "tc본더"],
-    "원전": ["원전", "원자력", "smr", "체코", "기자재"],
-    "전력": ["전력", "변압기", "송배전", "전선", "ess", "데이터센터"],
-    "로봇": ["로봇", "휴머노이드", "자동화", "협동로봇"],
-    "바이오": ["바이오", "신약", "임상", "fda", "기술수출", "cdmo"],
-    "우주항공": ["우주", "항공", "위성", "발사체", "누리호"],
-    "SpaceX+xAI": ["spacex", "xai", "스타링크", "머스크", "우주 인터넷"],
-    "방산": ["방산", "국방", "미사일", "탄약", "수출", "무기체계"]
-  };
-
-  const keywords = themeKeywordMap[theme.name] || [];
-  keywords.forEach(keyword => {
-    if (text.includes(keyword.toLowerCase())) score += 2;
-  });
-
-  return score;
-}
-
-function buildNewsScore(item, theme = null) {
-  let score = 0;
-  score += sourcePriority(item.source || "");
-  score += recencyPriority(item.pubDate || "");
-  score += qualityPriority(item.title || "");
-
-  if (theme) {
-    score += themeRelevanceScore(item.title || "", theme);
-  }
-
-  return score;
 }
 
 function dedupeNews(news) {
@@ -285,11 +176,9 @@ function dedupeNews(news) {
   const result = [];
 
   for (const item of news) {
-    const normalized = normalizeText(item.title);
-    const softKey = normalized.slice(0, 40);
-
-    if (!seen.has(softKey)) {
-      seen.add(softKey);
+    const key = normalizeText(item.title);
+    if (!seen.has(key)) {
+      seen.add(key);
       result.push(item);
     }
   }
@@ -301,13 +190,12 @@ function sortNews(news) {
   return news.sort((a, b) => {
     const dateA = new Date(a.pubDate).getTime() || 0;
     const dateB = new Date(b.pubDate).getTime() || 0;
-
-    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+    if (b.score !== a.score) return b.score - a.score;
     return dateB - dateA;
   });
 }
 
-async function parseGoogleNews(query, theme = null) {
+async function parseGoogleNews(query) {
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=ko&gl=KR&ceid=KR:ko`;
   const feed = await parser.parseURL(rssUrl);
 
@@ -321,36 +209,24 @@ async function parseGoogleNews(query, theme = null) {
       title,
       link: item.link || "#",
       source,
-      pubDate
+      pubDate,
+      score: sourcePriority(source) + headlinePriority(title) + recencyPriority(pubDate)
     };
   });
 
   const recentOnly = items.filter(item => isRecentNews(item.pubDate, 7));
-const base = recentOnly.length ? recentOnly : items;
+  const base = recentOnly.length ? recentOnly : items;
 
-const filtered = base.filter(item => isRelevantNews(item.title, theme));
-const finalBase = filtered.length ? filtered : base;
-
-const deduped = dedupeNews(finalBase).map(item => ({
-  ...item,
-  score: buildNewsScore(item, theme)
-}));
-
-  return sortNews(deduped);
+  return sortNews(dedupeNews(base));
 }
 
 async function fetchThemeNews(theme, count = 6) {
   try {
-    let news = await parseGoogleNews(theme.query, theme);
+    let news = await parseGoogleNews(theme.query);
 
     if (news.length < 3 && theme.fallbackQuery) {
-      const fallbackNews = await parseGoogleNews(theme.fallbackQuery, theme);
-      news = sortNews(
-        dedupeNews([...news, ...fallbackNews]).map(item => ({
-          ...item,
-          score: buildNewsScore(item, theme)
-        }))
-      );
+      const fallbackNews = await parseGoogleNews(theme.fallbackQuery);
+      news = sortNews(dedupeNews([...news, ...fallbackNews]));
     }
 
     return news.slice(0, count);
@@ -386,12 +262,8 @@ function scoreStocks(stockList, news) {
         item.title.includes("수주") ||
         item.title.includes("계약") ||
         item.title.includes("투자") ||
-        item.title.includes("확대") ||
-        item.title.includes("승인") ||
-        item.title.includes("실적") ||
-        item.title.includes("수출") ||
-        item.title.includes("기술수출")
-      ) scoreMap[stock] += 2;
+        item.title.includes("확대")
+      ) scoreMap[stock] += 1;
     });
   });
   return Object.entries(scoreMap).sort((a, b) => b[1] - a[1]);
@@ -418,7 +290,7 @@ function generateBrief(themeName, coreStocks, candidateStocks) {
       "- 전공정보다 후공정·패키징 뉴스가 많아지면 장비주 강도가 더 세질 수 있습니다.",
       `- 핵심 종목은 ${a} 중심으로 보시면 됩니다.`,
       b ? `- 후보 종목은 ${b} 등 밸류체인 확산주입니다.` : "- 오늘은 신규 후보 확산이 약하고 대형주 중심 흐름입니다.",
-      "- 뉴스 개수보다 계약·공급·양산 같은 재료의 질이 중요합니다."
+      "- 뉴스가 대형주에서 장비주로 확산되는지 여부가 핵심입니다."
     ],
     "원전": [
       "- 원전은 정책보다 실제 수주·수출·MOU 기사 비중이 중요합니다.",
@@ -436,7 +308,7 @@ function generateBrief(themeName, coreStocks, candidateStocks) {
     ],
     "로봇": [
       "- 로봇은 기대감 기사보다 산업 자동화·실사용 기사 비중을 더 봐야 합니다.",
-      "- 특징주성 기사보다 실제 고객사·도입 기사에 더 무게를 두셔야 합니다.",
+      "- 기대감 기사 위주라면 변동성만 크고 추세 지속성은 약할 수 있습니다.",
       `- 핵심 종목은 ${a} 중심으로 보시면 됩니다.`,
       b ? `- 후보 종목은 ${b} 등 중소형 로봇주입니다.` : "- 오늘은 대표 로봇주 중심 흐름입니다.",
       "- 실제 사업화 연결 기사 여부가 중요합니다."
@@ -457,10 +329,10 @@ function generateBrief(themeName, coreStocks, candidateStocks) {
     ],
     "SpaceX+xAI": [
       "- SpaceX+xAI는 머스크 생태계 테마 확산 속도로 움직이는 경우가 많습니다.",
-      "- 단순 테마 기사보다 실제 투자·지분·납품 연결 기사 비중을 보셔야 합니다.",
+      "- 국내 직접 수혜 연결고리가 약한 종목은 과열 주의가 필요합니다.",
       `- 핵심 종목은 ${a} 중심으로 체크하시면 됩니다.`,
       b ? `- 후보 종목은 ${b} 등 투자/벤처 연결주입니다.` : "- 오늘은 핵심 종목 중심 반응이 강합니다.",
-      "- 기사 강도보다 연결고리의 실체가 중요합니다."
+      "- 기사 강도보다 테마 확산 속도가 빠른 섹터입니다."
     ],
     "방산": [
       "- 방산은 지정학 뉴스보다 실제 계약·수출 기사일 때 종목 강도가 큽니다.",
@@ -477,13 +349,7 @@ function generateBrief(themeName, coreStocks, candidateStocks) {
 function buildTopNewsFromThemes(themeResults, count = 5) {
   const merged = [];
   themeResults.forEach(result => merged.push(...result.news));
-
-  const rescored = dedupeNews(merged).map(item => ({
-    ...item,
-    score: buildNewsScore(item, null) + qualityPriority(item.title)
-  }));
-
-  return sortNews(rescored).slice(0, count);
+  return sortNews(dedupeNews(merged)).slice(0, count);
 }
 
 function buildTopPickCandidates(themeResults) {
@@ -497,37 +363,6 @@ function buildTopPickCandidates(themeResults) {
     }))
     .sort((a, b) => b.rawScore - a.rawScore)
     .slice(0, 3);
-}
-
-function isRelevantNews(title) {
-  const text = (title || "").toLowerCase();
-
-  // 한국 주요 기업 키워드
-  const koreanStocks = [
-    "삼성", "sk", "현대", "두산", "한화", "lg", "셀트리온",
-    "카카오", "네이버", "포스코", "한국", "코스피", "코스닥"
-  ];
-
-  // 글로벌 핵심 영향 기업
-  const globalImpact = [
-    "nvidia", "엔비디아", "tsmc", "인텔", "arm"
-  ];
-
-  // 제거 대상 키워드
-  const exclude = [
-    "치어", "중국", "홍콩", "상하이", "심천"
-  ];
-
-  // 제거 먼저
-  if (exclude.some(k => text.includes(k))) return false;
-
-  // 국내 or 영향 기업 포함이면 통과
-  if (
-    koreanStocks.some(k => text.includes(k)) ||
-    globalImpact.some(k => text.includes(k))
-  ) return true;
-
-  return false;
 }
 
 async function buildBriefing() {
@@ -554,9 +389,8 @@ async function buildBriefing() {
 
   const payload = {
     updatedAt: formatDateToIso(new Date()),
-    sourceMode: "quality-first",
     themeResults: results,
-    topNews: buildTopNewsFromThemes(results, 7),
+    topNews: buildTopNewsFromThemes(results, 5),
     topPicks: buildTopPickCandidates(results)
   };
 
@@ -574,7 +408,6 @@ app.get("/api/briefing", async (req, res) => {
       return res.json({
         ok: true,
         cached: true,
-        stale: false,
         ...cache.payload
       });
     }
@@ -589,7 +422,6 @@ app.get("/api/briefing", async (req, res) => {
     res.json({
       ok: true,
       cached: false,
-      stale: false,
       ...payload
     });
   } catch (error) {
@@ -614,4 +446,3 @@ app.get("/api/briefing", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`서버 실행: http://localhost:${PORT}`);
 });
-
