@@ -58,8 +58,8 @@ const themes = [
     name: "SpaceX+xAI",
     query: "SpaceX OR 스타링크 OR xAI OR 머스크 OR 나스닥 상장",
     fallbackQuery: "SpaceX OR xAI OR 스타링크 OR 우주 인터넷 OR 머스크",
-    coreStocks: ["에이치브이엠", "스피어", "미래에셋증권", "아주IB투자"],
-    candidateStocks: ["LB인베스트먼트", "SV인베스트먼트", "TS인베스트먼트", "컴퍼니케이"]
+    coreStocks: ["인텔리안테크", "쎄트렉아이", "AP위성"],
+    candidateStocks: ["쏠리드", "에치에프알", "센서뷰", "오이솔루션", "케이엠더블유"]
   },
   {
     name: "방산",
