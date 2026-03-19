@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아침 투자 브리핑</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>아침 투자 브리핑</h1>
+        <p class="sub">개인투자용 · 최근 7일 내 뉴스 중심 반영</p>
+        <p class="sub" id="updateTime">업데이트 준비 중...</p>
+      </div>
+      <button id="refreshBtn" class="refresh-btn">새로고침</button>
+    </header>
+
+    <section class="hero">
+      <div class="hero-card">
+        <div class="hero-title">오늘 체크할 테마</div>
+        <div class="hero-tags" id="heroTags"></div>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <section id="topNews" class="summary-card"></section>
+      <section id="topPicks" class="summary-card"></section>
+    </section>
+
+    <main id="dashboard" class="dashboard"></main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
