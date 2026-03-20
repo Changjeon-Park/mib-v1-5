@@ -287,77 +287,6 @@ function qualityPriority(title) {
   return score;
 }
 
-function compressTitleForDedup(title) {
-  return (title || "")
-    .toLowerCase()
-    .replace(/\[[^\]]+\]/g, " ")
-    .replace(/[“”"'‘’]/g, "")
-    .replace(/[^\w가-힣\s]/g, " ")
-    .replace(/\b(단독|속보|종합|특징주|목표가|상승|급등|하락|돌파|개발|출시)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function dedupeNews(news) {
-  const seen = new Set();
-  const result = [];
-
-  for (const item of news) {
-    const normalized = compressTitleForDedup(item.title);
-    const key = normalized.split(" ").slice(0, 8).join(" ");
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push(item);
-    }
-  }
-
-  return result;
-}
-
-function sortNews(news) {
-  return [...news].sort((a, b) => {
-    const aTime = new Date(a.pubDate || 0).getTime();
-    const bTime = new Date(b.pubDate || 0).getTime();
-    return bTime - aTime; // 최신순
-  });
-}
-
-function isLowValueNews(title) {
-  const text = (title || "").toLowerCase();
-
-  const blockedPatterns = [
-    "취임", "선임", "연임", "사장", "대표이사", "본부장", "부사장",
-    "연봉", "보수", "급여", "성과급",
-    "동정", "참석", "개최", "세미나", "포럼", "기념식",
-    "인사", "조직 개편", "조직개편"
-  ];
-
-  return blockedPatterns.some(keyword => text.includes(keyword));
-}
-
-function isForeignOnlyNews(title, themeName = "") {
-  const text = (title || "").toLowerCase();
-
-  const foreignOnlyKeywords = [
-    "st", "인피니언", "infineon", "tsmc", "arm", "qualcomm", "퀄컴"
-  ];
-
-  const domesticLinkedKeywords = [
-    "삼성", "sk", "한화", "현대", "lg", "셀트리온", "두산", "한국", "국내"
-  ];
-
-  // 해외 기업명이 있어도 국내 연결이 있으면 허용
-  const hasForeign = foreignOnlyKeywords.some(k => text.includes(k));
-  const hasDomestic = domesticLinkedKeywords.some(k => text.includes(k));
-
-  if (!hasForeign) return false;
-  if (hasDomestic) return false;
-
-  // 로봇/우주/반도체 섹터에서 특히 오염이 심하니 기본 차단
-  return true;
-}
-
 function themeRelevanceScore(title, theme) {
   const text = (title || "").toLowerCase();
   let score = 0;
@@ -444,6 +373,33 @@ function buildNewsScore(item, theme = null) {
   return score;
 }
 
+function dedupeNews(news) {
+  const seen = new Set();
+  const result = [];
+
+  for (const item of news) {
+    const normalized = normalizeText(item.title);
+    const softKey = normalized.slice(0, 40);
+
+    if (!seen.has(softKey)) {
+      seen.add(softKey);
+      result.push(item);
+    }
+  }
+
+  return result;
+}
+
+function sortNews(news) {
+  return news.sort((a, b) => {
+    const dateA = new Date(a.pubDate).getTime() || 0;
+    const dateB = new Date(b.pubDate).getTime() || 0;
+
+    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+    return dateB - dateA;
+  });
+}
+
 function limitNewsPerStock(news, stockPool = [], maxPerStock = 3, totalLimit = 6) {
   const stockCounts = {};
   const result = [];
@@ -491,16 +447,8 @@ async function parseGoogleNews(query, theme = null) {
   const recentOnly = items.filter(item => isRecentNews(item.pubDate, 7));
   const base = recentOnly.length ? recentOnly : items;
 
-  const filteredBase = base.filter(item => {
-  if (isLowValueNews(item.title)) return false;
-  if (isForeignOnlyNews(item.title, theme?.name || "")) return false;
-  return true;
-});
-
-  const finalRawBase = filteredBase.length ? filteredBase : base;
-
-  const filtered = finalRawBase.filter(item => isRelevantNews(item.title, theme));
-  const finalBase = filtered.length ? filtered : finalRawBase;
+  const filtered = base.filter(item => isRelevantNews(item.title, theme));
+  const finalBase = filtered.length ? filtered : base;
 
   const deduped = dedupeNews(finalBase).map(item => ({
   ...item,
@@ -514,39 +462,24 @@ async function fetchThemeNews(theme, count = 6) {
   try {
     let news = await parseGoogleNews(theme.query, theme);
 
-    if (news.length < 3 && theme.fallbackQuery) {
-      const fallbackNews = await parseGoogleNews(theme.fallbackQuery, theme);
-
-      news = dedupeNews(
-        [...news, ...fallbackNews].map(item => ({
-          ...item,
-          score: buildNewsScore(item, theme)
-        }))
-      );
+    if (theme.name !== "로봇") {
+      news = news.filter(item => !forceRobotTheme(item.title));
     }
 
-    const stockPool = themeAutoMentionPools[theme.name]
-      || [...theme.coreStocks, ...theme.candidateStocks];
+    if (news.length < 3 && theme.fallbackQuery) {
+  const fallbackNews = await parseGoogleNews(theme.fallbackQuery, theme);
+  news = sortNews(
+    dedupeNews([...news, ...fallbackNews]).map(item => ({
+      ...item,
+      score: buildNewsScore(item, theme)
+    }))
+  );
+}
 
-    const perStockLimitMap = {
-      "바이오": 2,
-      "전력": 2,
-      "원전": 2,
-      "방산": 2,
-      "반도체": 2
-    };
+const stockPool = themeAutoMentionPools[theme.name]
+  || [...theme.coreStocks, ...theme.candidateStocks];
 
-    const perStockLimit = perStockLimitMap[theme.name] || 3;
-
-    // 1차: 같은 종목 뉴스 개수 제한
-    const limitedNews = limitNewsPerStock(news, stockPool, perStockLimit, count * 2);
-
-    // 2차: 최신순 정렬
-    const sortedNews = sortNews(limitedNews);
-
-    // 3차: 최종 개수 제한
-    return sortedNews.slice(0, count);
-
+return limitNewsPerStock(news, stockPool, 3, count);
   } catch (error) {
     console.error(`뉴스 로드 실패: ${theme.name}`, error.message);
     return [];
@@ -761,48 +694,18 @@ function generateBrief(themeName, coreStocks, candidateStocks) {
   return base[themeName] || ["- 추가 해석 정보가 필요합니다."];
 }
 
-function extractPrimaryCompany(title, allStocks = []) {
-  const matched = allStocks.find(stock => (title || "").includes(stock));
-  return matched || null;
-}
-
-function buildTopNewsFromThemes(themeResults, count = 7) {
+function buildTopNewsFromThemes(themeResults, count = 5) {
   const merged = [];
   themeResults.forEach(result => merged.push(...result.news));
-
-  const allStocks = Array.from(new Set(
-    themeResults.flatMap(result => [
-      ...(result.theme.coreStocks || []),
-      ...(result.theme.candidateStocks || []),
-      ...(result.candidateStocks || [])
-    ])
-  ));
 
   const rescored = dedupeNews(merged).map(item => ({
     ...item,
     score: buildNewsScore(item, null) + qualityPriority(item.title)
   }));
 
-  const sorted = sortNews(rescored);
-
-  const companySeen = {};
-  const result = [];
-
-  for (const item of sorted) {
-    const company = extractPrimaryCompany(item.title, allStocks);
-
-    if (company) {
-      companySeen[company] = companySeen[company] || 0;
-      if (companySeen[company] >= 1) continue; // 핵심뉴스에서는 같은 기업 1개만
-      companySeen[company] += 1;
-    }
-
-    result.push(item);
-    if (result.length >= count) break;
-  }
-
-  return result;
+  return sortNews(rescored).slice(0, count);
 }
+
 function buildTopPickCandidates(themeResults) {
   return themeResults
     .map(result => ({
@@ -813,7 +716,7 @@ function buildTopPickCandidates(themeResults) {
       rawScore: result.signal.className === "strong" ? 3 : 2
     }))
     .sort((a, b) => b.rawScore - a.rawScore)
-    .slice(0, 5);
+    .slice(0, 3);
 }
 
 function isRelevantNews(title) {
