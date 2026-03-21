@@ -1,14 +1,10 @@
 const express = require("express");
 const path = require("path");
 const Parser = require("rss-parser");
-
+const parser = new Parser();
 const app = express();
 
-const PORT = process.env.PORT;
-
-if (!PORT) {
-  throw new Error("PORT is not defined");
-}
+const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
@@ -213,6 +209,7 @@ function hasAny(text, keywords) {
 function isRelevantNews(title, theme = null) {
   const text = (title || "").toLowerCase();
 
+  // 1) 명확한 제거 대상
   const blockedForeignStocks = [
     "치어 홀딩", "cheer holding", "나스닥 상장 유지", "주식 병합 승인"
   ];
@@ -222,10 +219,40 @@ function isRelevantNews(title, theme = null) {
     "급등", "급락", "추천 후 상승", "상승세", "주가 상승세"
   ];
 
+  // 사용자가 추가한 제거 키워드
+  const exclude = [
+    "치어", "홍콩", "상하이", "심천"
+  ];
+
+  // 너무 광범위해서 중요한 뉴스까지 날릴 수 있어 보수적으로 사용
+  // 필요하면 나중에 다시 넣기
+  // "중국"
+
+  if (
+    blockedForeignStocks.some(k => text.includes(k.toLowerCase())) ||
+    blockedNoise.some(k => text.includes(k.toLowerCase())) ||
+    exclude.some(k => text.includes(k.toLowerCase()))
+  ) {
+    return false;
+  }
+
+  // 2) 글로벌 거시/핵심 기업 허용
   const allowedGlobalMacro = [
     "엔비디아", "nvidia", "tsmc", "인텔", "arm", "테슬라", "fomc", "fed"
   ];
 
+  const globalImpact = [
+    "nvidia", "엔비디아", "tsmc", "인텔", "arm"
+  ];
+
+  if (
+    allowedGlobalMacro.some(k => text.includes(k.toLowerCase())) ||
+    globalImpact.some(k => text.includes(k.toLowerCase()))
+  ) {
+    return true;
+  }
+
+  // 3) 국내 투자 연결 기사 허용
   const domesticHint = [
     "삼성", "sk", "현대", "lg", "두산", "한화", "셀트리온", "유한양행",
     "알테오젠", "리가켐", "한국전력", "한전기술", "두산에너빌리티",
@@ -233,25 +260,43 @@ function isRelevantNews(title, theme = null) {
     "코스피", "코스닥", "국내", "한국"
   ];
 
-  // 1) 명확한 제거 대상
-  if (blockedForeignStocks.some(k => text.includes(k.toLowerCase()))) return false;
+  const koreanStocks = [
+    "삼성", "sk", "현대", "두산", "한화", "lg", "셀트리온",
+    "카카오", "네이버", "포스코", "한국", "코스피", "코스닥"
+  ];
 
-  // 2) 너무 소음성 기사 제거
-  if (blockedNoise.some(k => text.includes(k.toLowerCase()))) return false;
-
-  // 3) 글로벌 거시/핵심 기업은 허용
-  if (allowedGlobalMacro.some(k => text.includes(k.toLowerCase()))) return true;
-
-  // 4) 국내 투자 연결 기사 허용
-  if (domesticHint.some(k => text.includes(k.toLowerCase()))) return true;
-
-  // 5) 테마 핵심/후보 종목 언급 시 허용
-  if (theme) {
-    const stockKeywords = [...theme.coreStocks, ...theme.candidateStocks].map(v => v.toLowerCase());
-    if (stockKeywords.some(k => text.includes(k))) return true;
+  if (
+    domesticHint.some(k => text.includes(k.toLowerCase())) ||
+    koreanStocks.some(k => text.includes(k.toLowerCase()))
+  ) {
+    return true;
   }
 
-  // 6) 기본은 제외
+  // 4) 테마 핵심/후보 종목 언급 시 허용
+  if (theme) {
+    const stockKeywords = [
+      ...(theme.coreStocks || []),
+      ...(theme.candidateStocks || [])
+    ].map(v => v.toLowerCase());
+
+    if (stockKeywords.some(k => text.includes(k))) {
+      return true;
+    }
+
+    // theme.query / fallbackQuery의 OR 키워드도 일부 활용
+    const themeQueryKeywords = [
+      ...(theme.query ? theme.query.split(" OR ") : []),
+      ...(theme.fallbackQuery ? theme.fallbackQuery.split(" OR ") : [])
+    ]
+      .map(v => v.toLowerCase().trim())
+      .filter(Boolean);
+
+    if (themeQueryKeywords.some(k => text.includes(k))) {
+      return true;
+    }
+  }
+
+  // 5) 기본은 제외
   return false;
 }
 
@@ -819,36 +864,6 @@ function buildTopPickCandidates(themeResults) {
     .slice(0, 5);
 }
 
-function isRelevantNews(title) {
-  const text = (title || "").toLowerCase();
-
-  // 한국 주요 기업 키워드
-  const koreanStocks = [
-    "삼성", "sk", "현대", "두산", "한화", "lg", "셀트리온",
-    "카카오", "네이버", "포스코", "한국", "코스피", "코스닥"
-  ];
-
-  // 글로벌 핵심 영향 기업
-  const globalImpact = [
-    "nvidia", "엔비디아", "tsmc", "인텔", "arm"
-  ];
-
-  // 제거 대상 키워드
-  const exclude = [
-    "치어", "중국", "홍콩", "상하이", "심천"
-  ];
-
-  // 제거 먼저
-  if (exclude.some(k => text.includes(k))) return false;
-
-  // 국내 or 영향 기업 포함이면 통과
-  if (
-    koreanStocks.some(k => text.includes(k)) ||
-    globalImpact.some(k => text.includes(k))
-  ) return true;
-
-  return false;
-}
 
 async function buildBriefing() {
   const results = [];
