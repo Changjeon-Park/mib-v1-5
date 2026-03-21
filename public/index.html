@@ -10,11 +10,20 @@
   <div class="app">
     <header class="topbar">
       <div>
-        <h1>아침 투자 브리핑</h1>
-        <p class="sub">개인투자용 · 최근 7일 내 뉴스 중심 반영</p>
-        <p class="sub" id="updateTime">업데이트 준비 중...</p>
-      </div>
-      <button id="refreshBtn" class="refresh-btn">새로고침</button>
+  <h1>아침 투자 브리핑</h1>
+
+  <p class="hero-subtitle">
+    개인투자용 · 최근 7일 내 뉴스 중심 반영
+  </p>
+
+  <div id="updateTime" class="update-time"></div>
+
+  <div class="briefing-badge">
+    <span class="live-dot">LIVE</span>
+    <span class="badge-text">Morning Briefing v1.0</span>
+  </div>
+</div>
+	<button id="refreshBtn">새로고침</button>
     </header>
 
     <section class="hero">
@@ -30,7 +39,18 @@
     </section>
 
     <main id="dashboard" class="dashboard"></main>
-  </div>
+
+<footer style="
+  text-align:center;
+  margin:40px 0 20px;
+  font-size:12px;
+  opacity:0.5;
+  color:#aaa;
+">
+  Morning Investment Briefing<br />
+  © 2026 Chaheum Park | Version 1.0
+</footer>
+ </div>
 
   <script src="app.js"></script>
 </body>
