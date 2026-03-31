@@ -1,14 +1,16 @@
 {
-  "name": "morning-briefing",
-  "version": "1.0.0",
-  "description": "아침 투자 브리핑",
+  "name": "mib-v1-5",
+  "version": "1.5.0",
+  "description": "Morning Investment Briefing v1.5",
   "main": "server.js",
   "scripts": {
-    "dev": "node server.js",
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.21.2",
     "rss-parser": "^3.13.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

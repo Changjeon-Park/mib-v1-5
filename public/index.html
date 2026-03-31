@@ -5,36 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIB | Morning Investment Briefing</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:,">
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div>
-  <h1>
-  <span style="font-weight:800; color:#facc15;">MIB</span>
-  <span style="opacity:0.7;"> | Morning Investment Briefing</span>
-  </h1>
+        <h1>
+          <span style="font-weight:800; color:#facc15;">MIB</span>
+          <span style="opacity:0.7;"> | Morning Investment Briefing</span>
+        </h1>
 
-  <p class="hero-subtitle">
-    개인투자용 · 최근 7일 내 뉴스 중심 반영
-  </p>
+        <p class="hero-subtitle">
+          개인투자용 · 최근 7일 내 뉴스 중심 반영
+        </p>
 
-  <div id="updateTime" class="update-time"></div>
+        <div id="updateTime" class="update-time"></div>
 
-  <div class="briefing-badge">
-    <span class="live-dot">LIVE</span>
-    <span class="badge-text">Morning Briefing v1.0</span>
-  </div>
-</div>
-	<button id="refreshBtn">새로고침</button>
+        <div class="briefing-badge">
+          <span class="live-dot">LIVE</span>
+          <span class="badge-text">Morning Briefing v1.5 | Noise Filtered</span>
+        </div>
+      </div>
+      <button id="refreshBtn" class="refresh-btn">새로고침</button>
     </header>
 
     <section class="hero">
       <div class="hero-card">
-        <div class="hero-title">오늘 체크할 테마</div>
+        <div class="hero-title">체크할 핵심 테마</div>
         <div class="hero-tags" id="heroTags"></div>
       </div>
     </section>
+
+    <div class="mib-stats-wrap">
+      <div class="mib-stat-card">
+        <div class="mib-stat-label">전체 조회수</div>
+        <div class="mib-stat-value" id="totalViews">0</div>
+      </div>
+
+      <div class="mib-stat-card">
+        <div class="mib-stat-label">오늘 조회수</div>
+        <div class="mib-stat-value" id="todayViews">0</div>
+      </div>
+
+      <div class="mib-stat-card">
+        <div class="mib-stat-label">전체 방문자 수</div>
+        <div class="mib-stat-value" id="totalVisitors">0</div>
+      </div>
+
+      <div class="mib-stat-card">
+        <div class="mib-stat-label">오늘 방문자 수</div>
+        <div class="mib-stat-value" id="todayVisitors">0</div>
+      </div>
+    </div>
 
     <section class="summary-grid">
       <section id="topNews" class="summary-card"></section>
@@ -43,11 +66,11 @@
 
     <main id="dashboard" class="dashboard"></main>
 
-<footer class="footer">
-  Morning Investment Briefing<br />
-  © 2026 Chaheum Park | Version 1.0
-</footer>
- </div>
+    <footer class="footer">
+      Morning Investment Briefing<br />
+      © 2026 Chaheum Park | MIB v1.5
+    </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>

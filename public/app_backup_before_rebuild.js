@@ -132,6 +132,26 @@ function normalizeTitle(title = "") {
     .trim();
 }
 
+function limitSimilarNews(newsList = [], maxPerTopic = 2) {
+  const map = {};
+
+  return newsList.filter(item => {
+    const key = normalizeTitle(item.title).slice(0, 15);
+
+    if (!map[key]) {
+      map[key] = 1;
+      return true;
+    }
+
+    if (map[key] < maxPerTopic) {
+      map[key]++;
+      return true;
+    }
+
+    return false;
+  });
+}
+
 function nominalizeArray(arr = []) {
   return (arr || []).map(item => nominalizeSentence(item));
 }
@@ -588,5 +608,3 @@ async function loadBriefing(force = false) {
 
 refreshBtn.addEventListener("click", () => loadBriefing(true));
 loadBriefing(false);
-
-trackVisitorStats();

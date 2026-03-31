@@ -1,0 +1,22 @@
+{
+  "totalVisits": 20,
+  "visitors": {},
+  "daily": {
+    "2026-03-24": {
+      "visits": 15,
+      "uniqueVisitors": [],
+      "versions": {}
+    },
+    "2026-03-25": {
+      "visits": 5,
+      "uniqueVisitors": [],
+      "versions": {}
+    }
+  },
+  "versions": {
+    "unknown": {
+      "visits": 20,
+      "uniqueVisitors": []
+    }
+  }
+}

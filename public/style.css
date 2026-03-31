@@ -265,6 +265,7 @@ h1 {
   font-size: 13px;
   line-height: 1.5;
   word-break: break-word;
+  display: none;
 }
 
 .insight {
@@ -775,6 +776,46 @@ body {
 .pick-theme,
 .pick-reason {
   white-space: normal;
+}
+
+.mib-stats-wrap {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.mib-stat-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  backdrop-filter: blur(6px);
+}
+
+.mib-stat-label {
+  font-size: 12px;
+  color: #9aa4b2;
+  margin-bottom: 8px;
+}
+
+.mib-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+@media (max-width: 900px) {
+  .mib-stats-wrap {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .mib-stats-wrap {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 767px) {
